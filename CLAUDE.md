@@ -76,6 +76,9 @@ This file is the **contract** between the user (owner of this project) and Claud
 19. **Phase 2 (Multi-user):** Postgres + Redis + Bull, Claude provider for the parser, React Native, FCM push.
     Do not build Phase 2 scaffolding inside Phase 1 code unless explicitly asked.
 
+**Ship each feature.**
+20. After finishing each feature (all items in §6 Definition of Done checked), commit the work on its `feat/<nn>-<name>` branch, merge into `test` for verification, then merge into `main` and deploy to Vercel. See §5.4 for the exact flow.
+
 ### 4.2 What the user commits to
 
 1. Keep [App-spec.md](App-spec.md) authoritative. Scope changes land there first, then cascade to feature specs.
@@ -100,6 +103,26 @@ Use the TodoWrite tool whenever a task has ≥ 3 steps. Mark in_progress before 
 ### 5.3 Code comments
 Default to **zero comments.** Only add one when the WHY is non-obvious — a hidden constraint, a subtle invariant, a workaround for a specific bug. No "what" comments, no planning / decision / analysis documents unless the user asks.
 
+### 5.4 Git flow & deployment
+
+Three long-lived branches:
+
+| Branch | Purpose | Deploys to |
+|---|---|---|
+| `main` | Production. Always green, always deployable. | Vercel **Production** |
+| `test` | Staging / QA. Features land here first for verification. | Vercel **Preview** (staging) |
+| `feat` | Integration branch for in-flight feature work (or use short-lived `feat/<nn>-<name>` branches off it). | Vercel **Preview** (per-branch) |
+
+**Per-feature loop:**
+1. Branch off `feat` → `feat/<nn>-<name>` (e.g. `feat/01-authentication`).
+2. Commit in small, focused chunks. Messages follow Conventional Commits: `feat(auth): …`, `fix(crawler): …`, `chore: …`, `docs: …`, `test: …`.
+3. When §6 Definition of Done is fully checked:
+   a. Merge `feat/<nn>-<name>` → `test`. Verify on the staging preview.
+   b. Merge `test` → `main`. Vercel auto-deploys production.
+   c. Tag the release: `v<phase>.<feature-number>` (e.g. `v1.01`).
+4. Never commit directly to `main` or `test` — always via merge from the branch below it.
+5. Ask before pushing to remote, force-pushing, or triggering a production deploy (per rule §4.1.15).
+
 ---
 
 ## 6. Definition of Done
@@ -115,6 +138,7 @@ A change is only done when:
 - [ ] No `console.log`, `.only`, `.skip`, or commented-out code
 - [ ] Linter + type-checker pass
 - [ ] Secrets are in env vars, not in code
+- [ ] Work committed on `feat/<nn>-<name>`, merged to `test` and verified, merged to `main`, and deployed on Vercel (see §5.4)
 
 ---
 
