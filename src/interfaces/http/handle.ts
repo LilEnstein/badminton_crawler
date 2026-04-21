@@ -1,6 +1,6 @@
 import type { NextRequest, NextResponse } from "next/server";
 
-import { DomainError } from "@/domain/user/errors";
+import { isDomainError } from "@/domain/user/errors";
 
 import type { Envelope } from "./envelope";
 import {
@@ -19,7 +19,7 @@ export async function handle<T>(
     if (err && typeof err === "object" && "issues" in err) {
       return zodErrorToResponse(err as never) as NextResponse<Envelope<T | null>>;
     }
-    if (err instanceof DomainError) {
+    if (isDomainError(err)) {
       return domainErrorToResponse(err) as NextResponse<Envelope<T | null>>;
     }
     console.warn("auth:unexpected-error", err);
