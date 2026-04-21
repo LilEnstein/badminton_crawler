@@ -3,9 +3,9 @@ import { LogoutUseCase } from "@/application/auth/logout.use-case";
 import { RegisterUserUseCase } from "@/application/auth/register-user.use-case";
 import { RotateRefreshTokenUseCase } from "@/application/auth/rotate-refresh-token.use-case";
 
-import { getDb } from "./db/sqlite";
-import { SqliteRefreshTokenRepository } from "./repositories/sqlite.refresh-token.repository";
-import { SqliteUserRepository } from "./repositories/sqlite.user.repository";
+import { getJsonStore } from "./db/json-store";
+import { JsonRefreshTokenRepository } from "./repositories/json.refresh-token.repository";
+import { JsonUserRepository } from "./repositories/json.user.repository";
 import { BcryptPasswordHasher } from "./security/bcrypt.password-hasher";
 import { JwtTokenSigner } from "./security/jwt.token-signer";
 import { SystemClock } from "./security/system-clock";
@@ -30,9 +30,9 @@ function readEnv(name: string, fallback?: string): string {
 export function getAuthContainer(): AuthContainer {
   if (cached) return cached;
 
-  const db = getDb();
-  const userRepo = new SqliteUserRepository(db);
-  const refreshRepo = new SqliteRefreshTokenRepository(db);
+  const store = getJsonStore();
+  const userRepo = new JsonUserRepository(store);
+  const refreshRepo = new JsonRefreshTokenRepository(store);
   const hasher = new BcryptPasswordHasher();
   const clock = new SystemClock();
   const ids = new UlidIdGenerator();

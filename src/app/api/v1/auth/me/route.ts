@@ -5,6 +5,7 @@ import { ok, fail } from "@/interfaces/http/envelope";
 import { handle } from "@/interfaces/http/handle";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   return handle(req, async () => {
