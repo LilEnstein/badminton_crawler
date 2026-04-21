@@ -1,4 +1,5 @@
-import fs from "node:fs";
+import fs from "node:fs/promises";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 export interface UserRecord {
@@ -34,74 +35,90 @@ export interface UserProfileRecord {
   updatedAt: string;
 }
 
-interface Store {
+export interface Store {
   users: UserRecord[];
   refreshTokens: RefreshTokenRecord[];
   profiles: UserProfileRecord[];
 }
 
+export interface BadmintonStore {
+  users(): Promise<UserRecord[]>;
+  refreshTokens(): Promise<RefreshTokenRecord[]>;
+  profiles(): Promise<UserProfileRecord[]>;
+  mutate(fn: (store: Store) => void): Promise<void>;
+}
+
 const EMPTY: Store = { users: [], refreshTokens: [], profiles: [] };
+
+function emptyStore(): Store {
+  return structuredClone(EMPTY);
+}
+
+function normalize(parsed: Partial<Store>): Store {
+  return {
+    users: parsed.users ?? [],
+    refreshTokens: parsed.refreshTokens ?? [],
+    profiles: parsed.profiles ?? []
+  };
+}
 
 function resolvePath(): string {
   const raw = process.env.JSON_STORE_PATH ?? "./data/badminton.json";
   const abs = path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw);
-  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  mkdirSync(path.dirname(abs), { recursive: true });
   return abs;
 }
 
-class JsonStore {
+class JsonStore implements BadmintonStore {
   private readonly filePath: string;
-  private data: Store;
+  private cache: Store | null = null;
 
   constructor() {
     this.filePath = resolvePath();
-    this.data = this.load();
   }
 
-  private load(): Store {
-    if (!fs.existsSync(this.filePath)) {
-      return structuredClone(EMPTY);
+  private async load(): Promise<Store> {
+    if (this.cache) return this.cache;
+    if (!existsSync(this.filePath)) {
+      this.cache = emptyStore();
+      return this.cache;
     }
     try {
-      const raw = fs.readFileSync(this.filePath, "utf8");
-      const parsed = JSON.parse(raw) as Partial<Store>;
-      return {
-        users: parsed.users ?? [],
-        refreshTokens: parsed.refreshTokens ?? [],
-        profiles: parsed.profiles ?? []
-      };
+      const raw = await fs.readFile(this.filePath, "utf8");
+      this.cache = normalize(JSON.parse(raw) as Partial<Store>);
     } catch {
-      return structuredClone(EMPTY);
+      this.cache = emptyStore();
     }
+    return this.cache;
   }
 
-  private persist(): void {
-    fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), "utf8");
+  private async persist(): Promise<void> {
+    if (!this.cache) return;
+    await fs.writeFile(this.filePath, JSON.stringify(this.cache, null, 2), "utf8");
   }
 
-  users(): UserRecord[] {
-    return this.data.users;
+  async users(): Promise<UserRecord[]> {
+    return (await this.load()).users;
   }
 
-  refreshTokens(): RefreshTokenRecord[] {
-    return this.data.refreshTokens;
+  async refreshTokens(): Promise<RefreshTokenRecord[]> {
+    return (await this.load()).refreshTokens;
   }
 
-  profiles(): UserProfileRecord[] {
-    return this.data.profiles;
+  async profiles(): Promise<UserProfileRecord[]> {
+    return (await this.load()).profiles;
   }
 
-  mutate(fn: (store: Store) => void): void {
-    fn(this.data);
-    this.persist();
+  async mutate(fn: (store: Store) => void): Promise<void> {
+    const store = await this.load();
+    fn(store);
+    await this.persist();
   }
-}
-
-let instance: JsonStore | null = null;
-
-export function getJsonStore(): JsonStore {
-  if (!instance) instance = new JsonStore();
-  return instance;
 }
 
 export type { JsonStore };
+export { JsonStore as JsonStoreClass };
+
+export function createJsonStore(): BadmintonStore {
+  return new JsonStore();
+}

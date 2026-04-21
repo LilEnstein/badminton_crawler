@@ -1,44 +1,30 @@
 import { NextResponse } from "next/server";
 import type { ZodError } from "zod";
 
-import {
-  EmptyDistrictsError,
-  EmptyTimeSlotsError,
-  InvalidBudgetError,
-  InvalidCityError,
-  InvalidDisplayNameError,
-  InvalidToleranceError,
-  ProfileAlreadyExistsError,
-  ProfileNotFoundError,
-  UnknownDistrictError
-} from "@/domain/profile";
-import { InvalidLevelError, InvalidRangeError } from "@/domain/skill";
-import {
-  DomainError,
-  EmailAlreadyRegisteredError,
-  InvalidCredentialsError,
-  InvalidEmailError,
-  TokenInvalidError,
-  TokenReuseError,
-  UserNotFoundError,
-  WeakPasswordError
-} from "@/domain/user/errors";
+import type { DomainError } from "@/domain/user/errors";
 
 import { fail, type Envelope } from "./envelope";
 
-const VALIDATION_400: ReadonlyArray<new (...args: never[]) => DomainError> = [
-  InvalidEmailError,
-  WeakPasswordError,
-  InvalidLevelError,
-  InvalidRangeError,
-  InvalidDisplayNameError,
-  InvalidToleranceError,
-  InvalidBudgetError,
-  InvalidCityError,
-  EmptyDistrictsError,
-  EmptyTimeSlotsError,
-  UnknownDistrictError
-];
+const STATUS_BY_CODE: Record<string, number> = {
+  INVALID_CREDENTIALS: 401,
+  TOKEN_INVALID: 401,
+  TOKEN_REUSE_DETECTED: 401,
+  EMAIL_ALREADY_REGISTERED: 409,
+  PROFILE_ALREADY_EXISTS: 409,
+  USER_NOT_FOUND: 404,
+  PROFILE_NOT_FOUND: 404,
+  INVALID_EMAIL: 400,
+  WEAK_PASSWORD: 400,
+  INVALID_LEVEL: 400,
+  INVALID_LEVEL_RANGE: 400,
+  INVALID_DISPLAY_NAME: 400,
+  INVALID_LEVEL_TOLERANCE: 400,
+  INVALID_BUDGET: 400,
+  INVALID_CITY: 400,
+  EMPTY_DISTRICTS: 400,
+  EMPTY_TIME_SLOTS: 400,
+  UNKNOWN_DISTRICT: 400
+};
 
 export function zodErrorToResponse(err: ZodError): NextResponse<Envelope<null>> {
   const fields: Record<string, string> = {};
@@ -49,22 +35,8 @@ export function zodErrorToResponse(err: ZodError): NextResponse<Envelope<null>> 
 }
 
 export function domainErrorToResponse(err: DomainError): NextResponse<Envelope<null>> {
-  if (err instanceof InvalidCredentialsError) {
-    return fail(401, { code: err.code, message: err.message });
-  }
-  if (err instanceof EmailAlreadyRegisteredError || err instanceof ProfileAlreadyExistsError) {
-    return fail(409, { code: err.code, message: err.message });
-  }
-  if (err instanceof UserNotFoundError || err instanceof ProfileNotFoundError) {
-    return fail(404, { code: err.code, message: err.message });
-  }
-  if (err instanceof TokenInvalidError || err instanceof TokenReuseError) {
-    return fail(401, { code: err.code, message: err.message });
-  }
-  if (VALIDATION_400.some((C) => err instanceof C)) {
-    return fail(400, { code: err.code, message: err.message });
-  }
-  return fail(500, { code: err.code, message: err.message });
+  const status = STATUS_BY_CODE[err.code] ?? 500;
+  return fail(status, { code: err.code, message: err.message });
 }
 
 export function unexpectedErrorToResponse(): NextResponse<Envelope<null>> {

@@ -1,4 +1,8 @@
+const DOMAIN_ERROR_BRAND = "__isDomainError__";
+
 export class DomainError extends Error {
+  readonly [DOMAIN_ERROR_BRAND] = true as const;
+
   constructor(
     public readonly code: string,
     message: string
@@ -6,6 +10,15 @@ export class DomainError extends Error {
     super(message);
     this.name = new.target.name;
   }
+}
+
+export function isDomainError(err: unknown): err is DomainError {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    DOMAIN_ERROR_BRAND in err &&
+    typeof (err as { code?: unknown }).code === "string"
+  );
 }
 
 export class InvalidEmailError extends DomainError {
