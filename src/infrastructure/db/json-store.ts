@@ -20,12 +20,27 @@ export interface RefreshTokenRecord {
   createdAt: string;
 }
 
+export interface UserProfileRecord {
+  userId: string;
+  displayName: string;
+  level: number;
+  levelTolerance: 1 | 2;
+  city: string;
+  districts: string[];
+  timeSlots: string[];
+  budgetVnd: number;
+  shuttleType: string;
+  genderPreference: string;
+  updatedAt: string;
+}
+
 interface Store {
   users: UserRecord[];
   refreshTokens: RefreshTokenRecord[];
+  profiles: UserProfileRecord[];
 }
 
-const EMPTY: Store = { users: [], refreshTokens: [] };
+const EMPTY: Store = { users: [], refreshTokens: [], profiles: [] };
 
 function resolvePath(): string {
   const raw = process.env.JSON_STORE_PATH ?? "./data/badminton.json";
@@ -52,7 +67,8 @@ class JsonStore {
       const parsed = JSON.parse(raw) as Partial<Store>;
       return {
         users: parsed.users ?? [],
-        refreshTokens: parsed.refreshTokens ?? []
+        refreshTokens: parsed.refreshTokens ?? [],
+        profiles: parsed.profiles ?? []
       };
     } catch {
       return structuredClone(EMPTY);
@@ -69,6 +85,10 @@ class JsonStore {
 
   refreshTokens(): RefreshTokenRecord[] {
     return this.data.refreshTokens;
+  }
+
+  profiles(): UserProfileRecord[] {
+    return this.data.profiles;
   }
 
   mutate(fn: (store: Store) => void): void {
