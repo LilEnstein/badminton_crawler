@@ -2,24 +2,26 @@ import type { UserRepository } from "@/application/auth/ports";
 import { Email } from "@/domain/user/email.value-object";
 import { User } from "@/domain/user/user.entity";
 
-import type { JsonStore, UserRecord } from "../db/json-store";
+import type { BadmintonStore, UserRecord } from "../db/json-store";
 
 export class JsonUserRepository implements UserRepository {
-  constructor(private readonly store: JsonStore) {}
+  constructor(private readonly store: BadmintonStore) {}
 
   async findByEmail(email: string): Promise<User | null> {
     const normalized = email.toLowerCase();
-    const row = this.store.users().find((u) => u.email === normalized);
+    const rows = await this.store.users();
+    const row = rows.find((u) => u.email === normalized);
     return row ? this.toEntity(row) : null;
   }
 
   async findById(id: string): Promise<User | null> {
-    const row = this.store.users().find((u) => u.id === id);
+    const rows = await this.store.users();
+    const row = rows.find((u) => u.id === id);
     return row ? this.toEntity(row) : null;
   }
 
   async save(user: User): Promise<void> {
-    this.store.mutate((s) => {
+    await this.store.mutate((s) => {
       const record: UserRecord = {
         id: user.id,
         email: user.email.value,
@@ -35,7 +37,7 @@ export class JsonUserRepository implements UserRepository {
   }
 
   async touchLastLogin(id: string, at: Date): Promise<void> {
-    this.store.mutate((s) => {
+    await this.store.mutate((s) => {
       const row = s.users.find((u) => u.id === id);
       if (row) row.lastLoginAt = at.toISOString();
     });
