@@ -7,7 +7,8 @@ import { GetMyProfileUseCase } from "@/application/profile/get-my-profile.use-ca
 import { UpdateProfileUseCase } from "@/application/profile/update-profile.use-case";
 
 import { SeedDistrictCatalog } from "./catalogs/seed.district-catalog";
-import { getJsonStore } from "./db/json-store";
+import { createJsonStore, type BadmintonStore } from "./db/json-store";
+import { createKvStore, isKvConfigured } from "./db/kv-store";
 import { JsonRefreshTokenRepository } from "./repositories/json.refresh-token.repository";
 import { JsonUserProfileRepository } from "./repositories/json.user-profile.repository";
 import { JsonUserRepository } from "./repositories/json.user.repository";
@@ -33,6 +34,7 @@ export interface ProfileContainer {
 
 let cached: AuthContainer | null = null;
 let cachedProfile: ProfileContainer | null = null;
+let cachedStore: BadmintonStore | null = null;
 
 function readEnv(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -40,10 +42,16 @@ function readEnv(name: string, fallback?: string): string {
   return value;
 }
 
+function getStore(): BadmintonStore {
+  if (cachedStore) return cachedStore;
+  cachedStore = isKvConfigured() ? createKvStore() : createJsonStore();
+  return cachedStore;
+}
+
 export function getAuthContainer(): AuthContainer {
   if (cached) return cached;
 
-  const store = getJsonStore();
+  const store = getStore();
   const userRepo = new JsonUserRepository(store);
   const refreshRepo = new JsonRefreshTokenRepository(store);
   const hasher = new BcryptPasswordHasher();
@@ -71,7 +79,7 @@ export function getAuthContainer(): AuthContainer {
 export function getProfileContainer(): ProfileContainer {
   if (cachedProfile) return cachedProfile;
 
-  const store = getJsonStore();
+  const store = getStore();
   const repo = new JsonUserProfileRepository(store);
   const districts = new SeedDistrictCatalog();
   const clock = new SystemClock();

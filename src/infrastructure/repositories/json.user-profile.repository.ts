@@ -11,19 +11,20 @@ import {
 } from "@/domain/profile";
 import { createLevel } from "@/domain/skill";
 
-import type { JsonStore, UserProfileRecord } from "../db/json-store";
+import type { BadmintonStore, UserProfileRecord } from "../db/json-store";
 
 export class JsonUserProfileRepository implements UserProfileRepository {
-  constructor(private readonly store: JsonStore) {}
+  constructor(private readonly store: BadmintonStore) {}
 
   async findByUserId(userId: string): Promise<UserProfile | null> {
-    const row = this.store.profiles().find((p) => p.userId === userId);
+    const rows = await this.store.profiles();
+    const row = rows.find((p) => p.userId === userId);
     return row ? this.toEntity(row) : null;
   }
 
   async save(profile: UserProfile): Promise<void> {
     const record = this.toRecord(profile);
-    this.store.mutate((s) => {
+    await this.store.mutate((s) => {
       const idx = s.profiles.findIndex((p) => p.userId === record.userId);
       if (idx >= 0) s.profiles[idx] = record;
       else s.profiles.push(record);

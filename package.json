@@ -12,11 +12,12 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@upstash/redis": "^1.37.0",
+    "bcryptjs": "2.4.3",
+    "jsonwebtoken": "9.0.2",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "bcryptjs": "2.4.3",
-    "jsonwebtoken": "9.0.2",
     "ulid": "2.3.0",
     "zod": "3.23.8"
   },
