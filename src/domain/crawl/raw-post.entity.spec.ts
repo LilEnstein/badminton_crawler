@@ -8,6 +8,7 @@ const BASE = {
   fbPostId: "123456",
   groupId: "group-1",
   authorName: "Nguyễn A",
+  authorProfileUrl: null,
   text: "Tìm người chơi cầu lông tối nay",
   postedAt: new Date("2024-06-01T12:00:00Z"),
   fetchedAt: new Date("2024-06-01T12:05:00Z"),

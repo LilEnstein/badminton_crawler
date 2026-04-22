@@ -57,6 +57,7 @@ export interface RawPostRecord {
   fbPostId: string;
   groupId: string;
   authorName: string;
+  authorProfileUrl: string | null;
   text: string;
   postedAt: string;
   fetchedAt: string;

@@ -18,6 +18,7 @@ export type UpdateableStatus = Exclude<GroupStatus, never>;
 export interface RawPostCandidate {
   fbPostId: string;
   authorName: string;
+  authorProfileUrl: string | null;
   text: string;
   postedAt: Date;
 }

@@ -105,10 +105,10 @@ async function scrapePostPage(
   const text = extractPostTextFromHtml(html) ?? (await extractPostTextFromDom(page));
   if (!text || text.length < MIN_POST_TEXT_LENGTH) return null;
 
-  const authorName = await extractAuthorName(page);
+  const { name: authorName, profileUrl: authorProfileUrl } = await extractAuthorInfo(page);
   const postedAt = await extractPostedAt(page, fbPostId);
 
-  return { fbPostId, authorName, text, postedAt };
+  return { fbPostId, authorName, authorProfileUrl, text, postedAt };
 }
 
 // Facebook embeds post message in JSON blobs as {"message":{"text":"..."}}
@@ -170,12 +170,19 @@ function extractPostIdsFromHtml(html: string): string[] {
   return [...seen];
 }
 
-async function extractAuthorName(page: import("playwright").Page): Promise<string> {
+async function extractAuthorInfo(
+  page: import("playwright").Page
+): Promise<{ name: string; profileUrl: string | null }> {
   for (const sel of ["[role=\"article\"] h2 a", "[role=\"article\"] strong a", "[role=\"article\"] h3 a"]) {
-    const name = await page.locator(sel).first().textContent().catch(() => null);
-    if (name?.trim()) return name.trim();
+    const el = page.locator(sel).first();
+    const name = await el.textContent().catch(() => null);
+    if (name?.trim()) {
+      const href = await el.getAttribute("href").catch(() => null);
+      const profileUrl = href ? `https://www.facebook.com${href.split("?")[0]}` : null;
+      return { name: name.trim(), profileUrl };
+    }
   }
-  return "Unknown";
+  return { name: "Unknown", profileUrl: null };
 }
 
 async function extractPostedAt(page: import("playwright").Page, fbPostId: string): Promise<Date> {

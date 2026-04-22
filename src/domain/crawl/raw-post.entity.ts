@@ -7,6 +7,7 @@ export interface RawPostProps {
   fbPostId: string;
   groupId: string;
   authorName: string;
+  authorProfileUrl: string | null;
   text: string;
   postedAt: Date;
   fetchedAt: Date;
@@ -26,6 +27,7 @@ export class RawPost {
   get fbPostId(): string { return this.props.fbPostId; }
   get groupId(): string { return this.props.groupId; }
   get authorName(): string { return this.props.authorName; }
+  get authorProfileUrl(): string | null { return this.props.authorProfileUrl; }
   get text(): string { return this.props.text; }
   get postedAt(): Date { return this.props.postedAt; }
   get fetchedAt(): Date { return this.props.fetchedAt; }
@@ -40,6 +42,7 @@ export class RawPost {
       fbPostId: this.props.fbPostId,
       groupId: this.props.groupId,
       authorName: this.props.authorName,
+      authorProfileUrl: this.props.authorProfileUrl,
       text: this.props.text,
       postedAt: this.props.postedAt.toISOString(),
       fetchedAt: this.props.fetchedAt.toISOString(),

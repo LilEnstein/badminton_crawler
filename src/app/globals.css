@@ -297,6 +297,37 @@ a:hover {
   margin-top: 32px;
 }
 
+.sessions-feed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.sessions-feed-header h2 {
+  font-size: 18px;
+  margin: 0;
+  color: var(--text);
+}
+
+.crawl-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-crawl {
+  padding: 6px 16px;
+  font-size: 13px;
+}
+
+.crawl-result {
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .sessions-feed h2 {
   font-size: 18px;
   margin: 0 0 16px;
@@ -383,4 +414,22 @@ a:hover {
   font-size: 11px;
   color: #fbbf24;
   margin-left: 8px;
+}
+
+.session-links {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.session-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.session-link:hover {
+  text-decoration: underline;
 }

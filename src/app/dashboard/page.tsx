@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import {
   clearSession,
@@ -15,6 +15,7 @@ import { fetchMyProfile, type ProfilePublic } from "@/app/lib/profile-client";
 
 interface SessionRecord {
   id: string;
+  rawPostId: string;
   type: "looking_for_players" | "court_available";
   status: "open" | "closed" | "unknown";
   location: { district: string | null; city: string | null; address: string | null };
@@ -27,6 +28,8 @@ interface SessionRecord {
   confidence: number;
   needsReview: boolean;
   parsedAt: string;
+  fbPostUrl: string | null;
+  authorProfileUrl: string | null;
 }
 
 function formatTime(t: string | null) {
@@ -59,6 +62,19 @@ export default function DashboardPage() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [crawling, setCrawling] = useState(false);
+  const [crawlResult, setCrawlResult] = useState<string | null>(null);
+
+  const loadSessions = useCallback(() => {
+    setLoadingSessions(true);
+    fetch("/api/v1/sessions")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json?.data?.sessions) setSessions(json.data.sessions);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingSessions(false));
+  }, []);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -93,14 +109,37 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    fetch("/api/v1/sessions")
-      .then((r) => r.json())
-      .then((json) => {
-        if (json?.data?.sessions) setSessions(json.data.sessions);
-      })
-      .catch(() => {})
-      .finally(() => setLoadingSessions(false));
-  }, []);
+    loadSessions();
+  }, [loadSessions]);
+
+  async function onCrawl() {
+    const token = getAccessToken();
+    if (!token) return;
+    setCrawling(true);
+    setCrawlResult(null);
+    try {
+      const res = await fetch("/api/v1/crawl-jobs/start", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) {
+        setCrawlResult(`Lỗi: ${json?.error?.message ?? res.statusText}`);
+      } else {
+        const results: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> =
+          json?.data?.results ?? [];
+        const totalNew = results.reduce((s, r) => s + r.newPosts, 0);
+        const totalSkip = results.reduce((s, r) => s + r.skipped, 0);
+        setCrawlResult(`Xong! ${totalNew} bài mới, ${totalSkip} bỏ qua.`);
+        loadSessions();
+      }
+    } catch (err) {
+      setCrawlResult(`Lỗi: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setCrawling(false);
+    }
+  }
 
   async function onLogout() {
     setLoggingOut(true);
@@ -144,12 +183,20 @@ export default function DashboardPage() {
         </div>
 
         <div className="sessions-feed">
-          <h2>Lịch thi đấu gần đây ({sessions.length})</h2>
+          <div className="sessions-feed-header">
+            <h2>Lịch thi đấu gần đây ({sessions.length})</h2>
+            <div className="crawl-controls">
+              <button className="btn btn-crawl" onClick={onCrawl} disabled={crawling}>
+                {crawling ? "Đang crawl..." : "Crawl ngay"}
+              </button>
+              {crawlResult && <span className="crawl-result">{crawlResult}</span>}
+            </div>
+          </div>
 
           {loadingSessions && <p className="empty">Đang tải...</p>}
 
           {!loadingSessions && sessions.length === 0 && (
-            <p className="empty">Chưa có lịch nào. Hãy chạy crawler để lấy dữ liệu.</p>
+            <p className="empty">Chưa có lịch nào. Hãy nhấn &quot;Crawl ngay&quot; để lấy dữ liệu.</p>
           )}
 
           {sessions.map((s) => (
@@ -186,6 +233,19 @@ export default function DashboardPage() {
                   <strong>{s.contact}</strong>
                 </div>
               )}
+
+              <div className="session-links">
+                {s.fbPostUrl && (
+                  <a href={s.fbPostUrl} target="_blank" rel="noopener noreferrer" className="session-link">
+                    Xem bài đăng
+                  </a>
+                )}
+                {s.authorProfileUrl && (
+                  <a href={s.authorProfileUrl} target="_blank" rel="noopener noreferrer" className="session-link">
+                    Trang chủ người đăng
+                  </a>
+                )}
+              </div>
             </div>
           ))}
         </div>

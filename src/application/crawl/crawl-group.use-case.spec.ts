@@ -45,7 +45,9 @@ function makeSession(botId: string | null): FacebookSessionProvider {
   };
 }
 
-function makeScraper(candidates: Array<{ fbPostId: string; authorName: string; text: string; postedAt: Date }>): GroupPageScraper {
+function makeScraper(
+  candidates: Array<{ fbPostId: string; authorName: string; authorProfileUrl: string | null; text: string; postedAt: Date }>
+): GroupPageScraper {
   return { scrape: vi.fn().mockResolvedValue(candidates) };
 }
 
@@ -80,6 +82,7 @@ describe("CrawlGroupUseCase", () => {
     const candidate = {
       fbPostId: "999",
       authorName: "Trần B",
+      authorProfileUrl: null,
       text: "Tìm người chơi cầu",
       postedAt: FIXED_NOW
     };
@@ -109,6 +112,7 @@ describe("CrawlGroupUseCase", () => {
       fbPostId: "999",
       groupId: "group-1",
       authorName: "A",
+      authorProfileUrl: null,
       text: "text",
       postedAt: FIXED_NOW,
       fetchedAt: FIXED_NOW,
@@ -122,7 +126,7 @@ describe("CrawlGroupUseCase", () => {
 
     const uc = new CrawlGroupUseCase({
       sessionProvider: makeSession("bot-1"),
-      scraper: makeScraper([{ fbPostId: "999", authorName: "A", text: "text", postedAt: FIXED_NOW }]),
+      scraper: makeScraper([{ fbPostId: "999", authorName: "A", authorProfileUrl: null, text: "text", postedAt: FIXED_NOW }]),
       rawPostRepo,
       botRepo: makeBotRepo(),
       parseQueue: queue,

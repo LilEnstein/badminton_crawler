@@ -29,6 +29,7 @@ function makeRawPost(text: string): RawPost {
     fbPostId: "fp-1",
     groupId: "g-1",
     authorName: "A",
+    authorProfileUrl: null,
     text,
     postedAt: FIXED_NOW,
     fetchedAt: FIXED_NOW,

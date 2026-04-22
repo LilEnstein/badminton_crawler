@@ -69,6 +69,7 @@ export class CrawlGroupUseCase {
         fbPostId: candidate.fbPostId,
         groupId,
         authorName: candidate.authorName,
+        authorProfileUrl: candidate.authorProfileUrl,
         text: candidate.text,
         postedAt: candidate.postedAt,
         fetchedAt,
