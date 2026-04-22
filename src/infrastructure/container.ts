@@ -82,7 +82,7 @@ function readEnv(name: string, fallback?: string): string {
   return value;
 }
 
-function getStore(): BadmintonStore {
+export function getStore(): BadmintonStore {
   if (cachedStore) return cachedStore;
   cachedStore = isKvConfigured() ? createKvStore() : createJsonStore();
   return cachedStore;
