@@ -10,3 +10,5 @@ data/
 credential
 credential.*
 secrets/
+.vercel
+.claude/settings.local.json

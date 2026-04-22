@@ -62,8 +62,15 @@ function normalize(parsed: Partial<Store>): Store {
   };
 }
 
+function defaultStorePath(): string {
+  // Vercel's project fs is read-only; only /tmp is writable. Data is ephemeral —
+  // use Vercel KV for durable storage.
+  if (process.env.VERCEL) return "/tmp/badminton.json";
+  return "./data/badminton.json";
+}
+
 function resolvePath(): string {
-  const raw = process.env.JSON_STORE_PATH ?? "./data/badminton.json";
+  const raw = process.env.JSON_STORE_PATH ?? defaultStorePath();
   const abs = path.isAbsolute(raw) ? raw : path.join(process.cwd(), raw);
   mkdirSync(path.dirname(abs), { recursive: true });
   return abs;
