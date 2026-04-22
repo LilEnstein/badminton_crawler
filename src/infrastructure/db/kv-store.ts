@@ -2,7 +2,13 @@ import { Redis } from "@upstash/redis";
 
 import type {
   BadmintonStore,
+  FacebookBotRecord,
+  FacebookGroupRecord,
+  ParseFailureRecord,
+  ParseQueueRecord,
+  RawPostRecord,
   RefreshTokenRecord,
+  SessionRecord,
   Store,
   UserProfileRecord,
   UserRecord
@@ -10,7 +16,17 @@ import type {
 
 const STORE_KEY = "badminton:store:v1";
 
-const EMPTY: Store = { users: [], refreshTokens: [], profiles: [] };
+const EMPTY: Store = {
+  users: [],
+  refreshTokens: [],
+  profiles: [],
+  groups: [],
+  facebookBots: [],
+  rawPosts: [],
+  parseQueue: [],
+  sessions: [],
+  parseFailures: []
+};
 
 function emptyStore(): Store {
   return structuredClone(EMPTY);
@@ -21,7 +37,13 @@ function normalize(parsed: Partial<Store> | null): Store {
   return {
     users: parsed.users ?? [],
     refreshTokens: parsed.refreshTokens ?? [],
-    profiles: parsed.profiles ?? []
+    profiles: parsed.profiles ?? [],
+    groups: parsed.groups ?? [],
+    facebookBots: parsed.facebookBots ?? [],
+    rawPosts: parsed.rawPosts ?? [],
+    parseQueue: parsed.parseQueue ?? [],
+    sessions: parsed.sessions ?? [],
+    parseFailures: parsed.parseFailures ?? []
   };
 }
 
@@ -59,6 +81,30 @@ class KvStore implements BadmintonStore {
 
   async profiles(): Promise<UserProfileRecord[]> {
     return (await this.load()).profiles;
+  }
+
+  async groups(): Promise<FacebookGroupRecord[]> {
+    return (await this.load()).groups;
+  }
+
+  async facebookBots(): Promise<FacebookBotRecord[]> {
+    return (await this.load()).facebookBots;
+  }
+
+  async rawPosts(): Promise<RawPostRecord[]> {
+    return (await this.load()).rawPosts;
+  }
+
+  async parseQueue(): Promise<ParseQueueRecord[]> {
+    return (await this.load()).parseQueue;
+  }
+
+  async sessions(): Promise<SessionRecord[]> {
+    return (await this.load()).sessions;
+  }
+
+  async parseFailures(): Promise<ParseFailureRecord[]> {
+    return (await this.load()).parseFailures;
   }
 
   async mutate(fn: (store: Store) => void): Promise<void> {
