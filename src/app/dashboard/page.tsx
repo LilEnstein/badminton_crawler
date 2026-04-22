@@ -127,11 +127,15 @@ export default function DashboardPage() {
       if (!res.ok) {
         setCrawlResult(`Lỗi: ${json?.error?.message ?? res.statusText}`);
       } else {
-        const results: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> =
-          json?.data?.results ?? [];
-        const totalNew = results.reduce((s, r) => s + r.newPosts, 0);
-        const totalSkip = results.reduce((s, r) => s + r.skipped, 0);
-        setCrawlResult(`Xong! ${totalNew} bài mới, ${totalSkip} bỏ qua.`);
+        const crawlResults: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> =
+          json?.data?.crawlResults ?? [];
+        const totalNew = crawlResults.reduce((s, r) => s + r.newPosts, 0);
+        const totalSkip = crawlResults.reduce((s, r) => s + r.skipped, 0);
+        const parsed: number = json?.data?.parsed ?? 0;
+        const msg = totalNew === 0
+          ? `${totalSkip} bài đã có, không có bài mới.`
+          : `${totalNew} bài mới, ${parsed} lịch đã phân tích, ${totalSkip} bỏ qua.`;
+        setCrawlResult(msg);
         loadSessions();
       }
     } catch (err) {
