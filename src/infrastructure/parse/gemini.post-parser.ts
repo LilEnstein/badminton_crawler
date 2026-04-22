@@ -5,8 +5,9 @@ import { InvalidParserOutputError, ProviderUnavailableError } from "@/domain/ses
 import type { PostParser, ParserOutput } from "@/application/parse/ports";
 import { parserOutputSchema } from "./schemas/parser-output.zod";
 
-const PROMPT_PATH = join(__dirname, "prompts/parse-post.vi.md");
-const GEMINI_MODEL = "gemini-1.5-flash";
+// process.cwd() is the project root in both dev and Next.js Node runtime
+const PROMPT_PATH = join(process.cwd(), "src/infrastructure/parse/prompts/parse-post.vi.md");
+const GEMINI_MODEL = "gemini-2.5-flash-lite";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 let cachedPrompt: string | null = null;
