@@ -48,7 +48,21 @@ function makeSession(botId: string | null): FacebookSessionProvider {
 function makeScraper(
   candidates: Array<{ fbPostId: string; authorName: string; authorProfileUrl: string | null; text: string; postedAt: Date }>
 ): GroupPageScraper {
-  return { scrape: vi.fn().mockResolvedValue(candidates) };
+  return {
+    scrape: vi.fn().mockResolvedValue({
+      candidates,
+      diagnostics: {
+        finalUrl: "https://www.facebook.com/groups/group-1",
+        pageTitle: "Group",
+        htmlLength: 100,
+        postIdsFound: candidates.length,
+        hasLoginForm: false,
+        isLoginWallUrl: false,
+        navError: null,
+        bodyPreview: ""
+      }
+    })
+  };
 }
 
 function makeQueue(): ParseJobQueue {
@@ -73,7 +87,9 @@ describe("CrawlGroupUseCase", () => {
     });
 
     const result = await uc.execute("group-1");
-    expect(result).toEqual({ newPosts: 0, skipped: 0 });
+    expect(result.newPosts).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.diagnostics).not.toBeNull();
   });
 
   it("saves new posts and enqueues parse jobs", async () => {

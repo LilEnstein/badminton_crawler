@@ -18,12 +18,23 @@ export async function POST(req: NextRequest) {
     const dbGroups = await listGroups.execute();
     const groups = dbGroups.length > 0 ? dbGroups : getEnvGroups();
 
-    const crawlResults: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> = [];
+    const crawlResults: Array<{
+      groupId: string;
+      newPosts: number;
+      skipped: number;
+      error?: string;
+      diagnostics?: unknown;
+    }> = [];
 
     for (const group of groups) {
       try {
         const result = await crawlGroup.execute(group.fbGroupId);
-        crawlResults.push({ groupId: group.fbGroupId, ...result });
+        crawlResults.push({
+          groupId: group.fbGroupId,
+          newPosts: result.newPosts,
+          skipped: result.skipped,
+          diagnostics: result.diagnostics ?? undefined
+        });
       } catch (err) {
         crawlResults.push({
           groupId: group.fbGroupId,

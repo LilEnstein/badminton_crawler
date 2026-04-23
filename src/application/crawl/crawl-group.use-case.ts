@@ -6,7 +6,8 @@ import type {
   FacebookSessionProvider,
   GroupPageScraper,
   ParseJobQueue,
-  RawPostRepository
+  RawPostRepository,
+  ScrapeDiagnostics
 } from "./ports";
 
 interface Deps {
@@ -23,6 +24,7 @@ interface Deps {
 interface CrawlGroupResult {
   newPosts: number;
   skipped: number;
+  diagnostics: ScrapeDiagnostics | null;
 }
 
 export class CrawlGroupUseCase {
@@ -35,9 +37,9 @@ export class CrawlGroupUseCase {
       throw new BotNotFoundError();
     }
 
-    let candidates;
+    let scrapeResult;
     try {
-      candidates = await this.deps.scraper.scrape(groupId, session.cookie);
+      scrapeResult = await this.deps.scraper.scrape(groupId, session.cookie);
     } catch (err) {
       if (err instanceof LoginWallError) {
         const bot = await this.deps.botRepo.findById(session.botId);
@@ -53,6 +55,7 @@ export class CrawlGroupUseCase {
       throw err;
     }
 
+    const { candidates, diagnostics } = scrapeResult;
     let newPosts = 0;
     let skipped = 0;
     const fetchedAt = this.deps.clock.now();
@@ -81,6 +84,6 @@ export class CrawlGroupUseCase {
       newPosts++;
     }
 
-    return { newPosts, skipped };
+    return { newPosts, skipped, diagnostics };
   }
 }

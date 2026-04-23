@@ -147,8 +147,24 @@ export default function DashboardPage() {
       if (!res.ok) {
         setCrawlResult(`Lỗi: ${json?.error?.message ?? res.statusText}`);
       } else {
-        const crawlResults: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> =
-          json?.data?.crawlResults ?? [];
+        type Diag = {
+          finalUrl: string;
+          pageTitle: string;
+          htmlLength: number;
+          postIdsFound: number;
+          hasLoginForm: boolean;
+          isLoginWallUrl: boolean;
+          navError: string | null;
+          bodyPreview: string;
+        };
+        type CrawlRow = {
+          groupId: string;
+          newPosts: number;
+          skipped: number;
+          error?: string;
+          diagnostics?: Diag;
+        };
+        const crawlResults: CrawlRow[] = json?.data?.crawlResults ?? [];
         const totalNew = crawlResults.reduce((s, r) => s + r.newPosts, 0);
         const totalSkip = crawlResults.reduce((s, r) => s + r.skipped, 0);
         const parsed: number = json?.data?.parsed ?? 0;
@@ -159,7 +175,19 @@ export default function DashboardPage() {
         } else if (errors.length > 0 && totalNew === 0) {
           msg = `Lỗi: ${errors[0]}`;
         } else if (totalNew === 0) {
-          msg = `${totalSkip} bài đã có, không có bài mới.`;
+          const r = crawlResults[0];
+          const d = r.diagnostics;
+          if (d) {
+            const reason =
+              d.isLoginWallUrl || d.hasLoginForm
+                ? "Facebook chặn (cần làm mới cookie bot)"
+                : d.navError
+                ? `Lỗi tải trang: ${d.navError}`
+                : `Không thấy bài viết (postIds=${d.postIdsFound}, html=${d.htmlLength}b, title="${d.pageTitle}")`;
+            msg = `${totalSkip} bài đã có. ${reason}`;
+          } else {
+            msg = `${totalSkip} bài đã có, không có bài mới.`;
+          }
         } else {
           msg = `${totalNew} bài mới, ${parsed} lịch đã phân tích, ${totalSkip} bỏ qua.`;
         }

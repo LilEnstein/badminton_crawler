@@ -31,8 +31,15 @@ export class IllegalStatusTransitionError extends DomainError {
 }
 
 export class LoginWallError extends DomainError {
-  constructor() {
-    super("LOGIN_WALL", "Facebook redirected to login — bot session needs refresh");
+  readonly detail: string | null;
+  constructor(detail: string | null = null) {
+    super(
+      "LOGIN_WALL",
+      detail
+        ? `Facebook redirected to login — bot session needs refresh (${detail})`
+        : "Facebook redirected to login — bot session needs refresh"
+    );
+    this.detail = detail;
   }
 }
 

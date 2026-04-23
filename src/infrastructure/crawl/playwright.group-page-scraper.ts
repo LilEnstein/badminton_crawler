@@ -1,19 +1,31 @@
-import type { RawPostCandidate, GroupPageScraper } from "@/application/crawl/ports";
+import type {
+  RawPostCandidate,
+  GroupPageScraper,
+  ScrapeDiagnostics,
+  ScrapeResult
+} from "@/application/crawl/ports";
 import { LoginWallError, DomChangedError } from "@/domain/crawl";
 
-const LOGIN_PATHS = ["/login", "/checkpoint", "/recover"];
+const LOGIN_URL_PATTERNS = ["/login", "/checkpoint", "/recover", "/two_step_verification"];
+const LOGIN_TITLE_PATTERNS = [/log in/i, /đăng nhập/i, /facebook – log in or sign up/i];
+const LOGIN_FORM_SELECTORS = [
+  'input[name="email"]',
+  'input[name="pass"]',
+  'input[type="password"]',
+  'form[action*="/login"]',
+  'a[href*="/login"]',
+  '[data-testid="royal_login_button"]'
+].join(", ");
 const MIN_POST_TEXT_LENGTH = 50;
 
-// Vercel/Lambda: stay within 60 s; local: be thorough.
 const IS_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-const GROUP_SETTLE_MS  = IS_SERVERLESS ? 3_000 : 8_000;
-const POST_SETTLE_MS   = IS_SERVERLESS ? 2_000 : 4_000;
-const NAV_TIMEOUT_MS   = IS_SERVERLESS ? 20_000 : 60_000;
+const GROUP_SETTLE_MS  = IS_SERVERLESS ? 5_000 : 8_000;
+const POST_SETTLE_MS   = IS_SERVERLESS ? 2_500 : 4_000;
+const NAV_TIMEOUT_MS   = IS_SERVERLESS ? 25_000 : 60_000;
 const MIN_DELAY_MS     = IS_SERVERLESS ? 500   : 2_000;
 const MAX_DELAY_MS     = IS_SERVERLESS ? 1_500  : 6_000;
 const MAX_POSTS_PER_RUN = IS_SERVERLESS ? 3 : 10;
 
-// chromium-min downloads this URL into /tmp on first cold start (~40 MB, cached across warm calls).
 const CHROMIUM_PACK_URL =
   "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
 
@@ -22,8 +34,21 @@ function randomDelay(): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function emptyDiagnostics(): ScrapeDiagnostics {
+  return {
+    finalUrl: "",
+    pageTitle: "",
+    htmlLength: 0,
+    postIdsFound: 0,
+    hasLoginForm: false,
+    isLoginWallUrl: false,
+    navError: null,
+    bodyPreview: ""
+  };
+}
+
 export class PlaywrightGroupPageScraper implements GroupPageScraper {
-  async scrape(groupId: string, cookie: string): Promise<RawPostCandidate[]> {
+  async scrape(groupId: string, cookie: string): Promise<ScrapeResult> {
     const { chromium } = await import("playwright-core").catch(() => {
       throw new DomChangedError("playwright-core package not installed — run: npm install playwright-core");
     });
@@ -48,8 +73,6 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
       });
     }
 
-    // chromium-headless-shell crashes on some Windows installs (0xC0000142);
-    // msedge is always present on Windows and is the reliable fallback.
     const channel = process.platform === "win32" ? "msedge" : undefined;
     return chromium.launch({ headless: true, channel });
   }
@@ -58,7 +81,7 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
     browser: import("playwright-core").Browser,
     groupId: string,
     cookie: string
-  ): Promise<RawPostCandidate[]> {
+  ): Promise<ScrapeResult> {
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -73,20 +96,34 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
     const page = await context.newPage();
     const groupUrl = `https://www.facebook.com/groups/${groupId}`;
 
-    await page.goto(groupUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
+    const diagnostics = emptyDiagnostics();
+    try {
+      await page.goto(groupUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
+    } catch (err) {
+      diagnostics.navError = err instanceof Error ? err.message : String(err);
+    }
     await page.waitForTimeout(GROUP_SETTLE_MS);
 
-    if (isLoginWall(page.url()) || (await hasLoginForm(page))) {
+    diagnostics.finalUrl = page.url();
+    diagnostics.pageTitle = await page.title().catch(() => "");
+    diagnostics.isLoginWallUrl = isLoginWallUrl(diagnostics.finalUrl);
+    diagnostics.hasLoginForm = await hasLoginForm(page);
+
+    const groupHtml = await page.content().catch(() => "");
+    diagnostics.htmlLength = groupHtml.length;
+    diagnostics.bodyPreview = await extractBodyPreview(page);
+
+    if (diagnostics.isLoginWallUrl || diagnostics.hasLoginForm || isLoginWallTitle(diagnostics.pageTitle)) {
       await context.close();
-      throw new LoginWallError();
+      throw new LoginWallError(loginDetail(diagnostics));
     }
 
-    const groupHtml = await page.content();
     const postIds = extractPostIdsFromHtml(groupHtml);
+    diagnostics.postIdsFound = postIds.length;
 
     if (postIds.length === 0) {
       await context.close();
-      return [];
+      return { candidates: [], diagnostics };
     }
 
     const candidates: RawPostCandidate[] = [];
@@ -101,12 +138,11 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
           await context.close();
           throw err;
         }
-        // Skip individual post failures — don't abort the run
       }
     }
 
     await context.close();
-    return candidates;
+    return { candidates, diagnostics };
   }
 }
 
@@ -119,8 +155,8 @@ async function scrapePostPage(
   await page.goto(postUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS }).catch(() => undefined);
   await page.waitForTimeout(POST_SETTLE_MS);
 
-  if (isLoginWall(page.url()) || (await hasLoginForm(page))) {
-    throw new LoginWallError();
+  if (isLoginWallUrl(page.url()) || (await hasLoginForm(page))) {
+    throw new LoginWallError("post-page");
   }
 
   const html = await page.content();
@@ -133,8 +169,6 @@ async function scrapePostPage(
   return { fbPostId, authorName, authorProfileUrl, text, postedAt };
 }
 
-// Facebook embeds post message in JSON blobs as {"message":{"text":"..."}}
-// This is more reliable than DOM traversal since it's server-side rendered.
 function extractPostTextFromHtml(html: string): string | null {
   const re = /"message":\{"text":"((?:[^"\\]|\\.)*)"/g;
   let best: string | null = null;
@@ -152,7 +186,6 @@ function extractPostTextFromHtml(html: string): string | null {
   return best && best.length >= MIN_POST_TEXT_LENGTH ? best : null;
 }
 
-// Fallback: collect the longest unique [dir="auto"] text blocks that look like post content
 async function extractPostTextFromDom(page: import("playwright-core").Page): Promise<string | null> {
   const elements = await page.locator('[dir="auto"]').all();
   const seen = new Set<string>();
@@ -181,7 +214,6 @@ function extractPostIdsFromHtml(html: string): string[] {
       if (m[1].length >= 10) seen.add(m[1]);
     }
   }
-  // href-based fallback
   {
     const re = /\/posts\/(\d+)/g;
     let m: RegExpExecArray | null;
@@ -217,15 +249,29 @@ async function extractPostedAt(page: import("playwright-core").Page, fbPostId: s
   return new Date();
 }
 
-function isLoginWall(url: string): boolean {
-  return LOGIN_PATHS.some((p) => url.includes(p));
+function isLoginWallUrl(url: string): boolean {
+  return LOGIN_URL_PATTERNS.some((p) => url.includes(p));
+}
+
+function isLoginWallTitle(title: string): boolean {
+  return LOGIN_TITLE_PATTERNS.some((p) => p.test(title));
 }
 
 async function hasLoginForm(page: import("playwright-core").Page): Promise<boolean> {
-  return page
-    .locator('input[name="email"], input[name="pass"], form[action*="/login"]')
-    .count()
-    .then((n) => n > 0);
+  return page.locator(LOGIN_FORM_SELECTORS).count().then((n) => n > 0).catch(() => false);
+}
+
+async function extractBodyPreview(page: import("playwright-core").Page): Promise<string> {
+  const text = await page.locator("body").innerText().catch(() => "");
+  return text.replace(/\s+/g, " ").trim().slice(0, 200);
+}
+
+function loginDetail(d: ScrapeDiagnostics): string {
+  const bits: string[] = [];
+  if (d.isLoginWallUrl) bits.push(`url=${d.finalUrl}`);
+  if (d.hasLoginForm) bits.push("form=present");
+  if (d.pageTitle) bits.push(`title="${d.pageTitle}"`);
+  return bits.join(" ");
 }
 
 const VALID_SAME_SITE = new Set(["Strict", "Lax", "None"]);

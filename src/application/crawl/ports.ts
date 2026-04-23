@@ -23,6 +23,22 @@ export interface RawPostCandidate {
   postedAt: Date;
 }
 
+export interface ScrapeDiagnostics {
+  finalUrl: string;
+  pageTitle: string;
+  htmlLength: number;
+  postIdsFound: number;
+  hasLoginForm: boolean;
+  isLoginWallUrl: boolean;
+  navError: string | null;
+  bodyPreview: string;
+}
+
+export interface ScrapeResult {
+  candidates: RawPostCandidate[];
+  diagnostics: ScrapeDiagnostics;
+}
+
 export interface FacebookBotRepository {
   findActive(): Promise<FacebookBot | null>;
   findById(id: string): Promise<FacebookBot | null>;
@@ -34,7 +50,7 @@ export interface FacebookSessionProvider {
 }
 
 export interface GroupPageScraper {
-  scrape(groupId: string, cookie: string): Promise<RawPostCandidate[]>;
+  scrape(groupId: string, cookie: string): Promise<ScrapeResult>;
 }
 
 export interface RawPostRepository {
