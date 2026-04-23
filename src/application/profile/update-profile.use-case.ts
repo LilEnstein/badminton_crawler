@@ -23,6 +23,9 @@ export interface UpdateProfilePatchInput {
   budgetVnd?: number;
   shuttleType?: ShuttleType;
   genderPreference?: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
 }
 
 export interface UpdateProfileInput {

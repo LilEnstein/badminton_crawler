@@ -43,6 +43,9 @@ export class JsonUserProfileRepository implements UserProfileRepository {
       budgetVnd: profile.budgetVnd,
       shuttleType: profile.shuttleType,
       genderPreference: profile.genderPreference,
+      sessionsCount: profile.sessionsCount,
+      favoriteCourts: profile.favoriteCourts,
+      favoriteDays: profile.favoriteDays ? [...profile.favoriteDays] : [],
       updatedAt: profile.updatedAt.toISOString()
     };
   }
@@ -66,6 +69,9 @@ export class JsonUserProfileRepository implements UserProfileRepository {
       budgetVnd: row.budgetVnd,
       shuttleType: shuttle,
       genderPreference: gender,
+      sessionsCount: row.sessionsCount,
+      favoriteCourts: row.favoriteCourts,
+      favoriteDays: row.favoriteDays,
       updatedAt: new Date(row.updatedAt)
     });
   }

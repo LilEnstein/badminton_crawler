@@ -23,6 +23,9 @@ export interface CreateProfileInput {
   budgetVnd: number;
   shuttleType: ShuttleType;
   genderPreference: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
 }
 
 export interface CreateProfileDeps {
@@ -57,6 +60,9 @@ export class CreateProfileUseCase {
       budgetVnd: input.budgetVnd,
       shuttleType: input.shuttleType,
       genderPreference: input.genderPreference,
+      sessionsCount: input.sessionsCount,
+      favoriteCourts: input.favoriteCourts,
+      favoriteDays: input.favoriteDays,
       updatedAt: this.deps.clock.now()
     });
 

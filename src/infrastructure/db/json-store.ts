@@ -32,6 +32,9 @@ export interface UserProfileRecord {
   budgetVnd: number;
   shuttleType: string;
   genderPreference: string;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
   updatedAt: string;
 }
 

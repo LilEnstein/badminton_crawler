@@ -18,6 +18,9 @@ export interface ProfilePublic {
   budgetVnd: number;
   shuttleType: ShuttleType;
   genderPreference: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
   updatedAt: string;
 }
 
@@ -31,6 +34,9 @@ export interface ProfileInput {
   budgetVnd: number;
   shuttleType: ShuttleType;
   genderPreference: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
 }
 
 export interface DistrictsCatalog {

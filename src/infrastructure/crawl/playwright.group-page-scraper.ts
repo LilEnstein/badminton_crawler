@@ -8,14 +8,14 @@ import { LoginWallError, DomChangedError } from "@/domain/crawl";
 
 const LOGIN_URL_PATTERNS = ["/login", "/checkpoint", "/recover", "/two_step_verification"];
 const LOGIN_TITLE_PATTERNS = [/log in/i, /đăng nhập/i, /facebook – log in or sign up/i];
-const LOGIN_FORM_SELECTORS = [
-  'input[name="email"]',
+// High-precision only: these never appear on logged-in pages.
+// Excluded: a[href*="/login"] — Facebook's footer has "Log In" links on every page.
+const LOGIN_FORM_SELECTOR_LIST = [
   'input[name="pass"]',
   'input[type="password"]',
   'form[action*="/login"]',
-  'a[href*="/login"]',
   '[data-testid="royal_login_button"]'
-].join(", ");
+];
 const MIN_POST_TEXT_LENGTH = 50;
 
 const IS_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -107,13 +107,19 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
     diagnostics.finalUrl = page.url();
     diagnostics.pageTitle = await page.title().catch(() => "");
     diagnostics.isLoginWallUrl = isLoginWallUrl(diagnostics.finalUrl);
-    diagnostics.hasLoginForm = await hasLoginForm(page);
+    const matchedLoginSelectors = await findMatchingLoginSelectors(page);
+    diagnostics.hasLoginForm = matchedLoginSelectors.length > 0;
+    if (diagnostics.hasLoginForm) {
+      diagnostics.loginSelectorsMatched = matchedLoginSelectors;
+    }
 
     const groupHtml = await page.content().catch(() => "");
     diagnostics.htmlLength = groupHtml.length;
     diagnostics.bodyPreview = await extractBodyPreview(page);
 
-    if (diagnostics.isLoginWallUrl || diagnostics.hasLoginForm || isLoginWallTitle(diagnostics.pageTitle)) {
+    const visibleLoginMatches = (diagnostics.loginSelectorsMatched ?? []).filter((m) => m.visible > 0);
+    const hasVisibleLoginForm = visibleLoginMatches.length > 0;
+    if (diagnostics.isLoginWallUrl || hasVisibleLoginForm || isLoginWallTitle(diagnostics.pageTitle)) {
       await context.close();
       throw new LoginWallError(loginDetail(diagnostics));
     }
@@ -258,7 +264,29 @@ function isLoginWallTitle(title: string): boolean {
 }
 
 async function hasLoginForm(page: import("playwright-core").Page): Promise<boolean> {
-  return page.locator(LOGIN_FORM_SELECTORS).count().then((n) => n > 0).catch(() => false);
+  return page
+    .locator(LOGIN_FORM_SELECTOR_LIST.join(", "))
+    .count()
+    .then((n) => n > 0)
+    .catch(() => false);
+}
+
+// Returns each selector that matched and how many elements — distinguishes a
+// real login wall (multiple matches) from FB's hidden re-auth form (1 match).
+async function findMatchingLoginSelectors(
+  page: import("playwright-core").Page
+): Promise<Array<{ selector: string; count: number; visible: number }>> {
+  const matches: Array<{ selector: string; count: number; visible: number }> = [];
+  for (const selector of LOGIN_FORM_SELECTOR_LIST) {
+    const count = await page.locator(selector).count().catch(() => 0);
+    if (count === 0) continue;
+    const visible = await page
+      .locator(selector)
+      .evaluateAll((els) => els.filter((el) => (el as HTMLElement).offsetParent !== null).length)
+      .catch(() => 0);
+    matches.push({ selector, count, visible });
+  }
+  return matches;
 }
 
 async function extractBodyPreview(page: import("playwright-core").Page): Promise<string> {
@@ -269,7 +297,12 @@ async function extractBodyPreview(page: import("playwright-core").Page): Promise
 function loginDetail(d: ScrapeDiagnostics): string {
   const bits: string[] = [];
   if (d.isLoginWallUrl) bits.push(`url=${d.finalUrl}`);
-  if (d.hasLoginForm) bits.push("form=present");
+  if (d.loginSelectorsMatched?.length) {
+    const sel = d.loginSelectorsMatched
+      .map((m) => `${m.selector}=${m.visible}/${m.count}`)
+      .join(" ");
+    bits.push(`form=[${sel}]`);
+  }
   if (d.pageTitle) bits.push(`title="${d.pageTitle}"`);
   return bits.join(" ");
 }

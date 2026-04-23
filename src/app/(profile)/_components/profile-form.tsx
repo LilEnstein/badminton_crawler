@@ -47,6 +47,16 @@ const TOLERANCE_OPTIONS: { value: LevelTolerance; label: string }[] = [
   { value: 2, label: "±2 trình" }
 ];
 
+const DAYS_OPTIONS: { value: string; label: string }[] = [
+  { value: "T2", label: "Thứ 2" },
+  { value: "T3", label: "Thứ 3" },
+  { value: "T4", label: "Thứ 4" },
+  { value: "T5", label: "Thứ 5" },
+  { value: "T6", label: "Thứ 6" },
+  { value: "T7", label: "Thứ 7" },
+  { value: "CN", label: "Chủ nhật" }
+];
+
 const DEFAULT_INPUT: ProfileInput = {
   displayName: "",
   level: 5,
@@ -56,7 +66,10 @@ const DEFAULT_INPUT: ProfileInput = {
   timeSlots: [],
   budgetVnd: 50_000,
   shuttleType: "feather",
-  genderPreference: "any"
+  genderPreference: "any",
+  sessionsCount: 0,
+  favoriteCourts: "",
+  favoriteDays: []
 };
 
 export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit }: Props) {
@@ -206,6 +219,38 @@ export function ProfileForm({ initial, submitLabel, submittingLabel, onSubmit }:
           options={GENDER_OPTIONS}
           value={form.genderPreference}
           onChange={(v) => update("genderPreference", v)}
+        />
+      </div>
+
+      <div className="field">
+        <label htmlFor="sessionsCount">Số buổi đã chơi</label>
+        <input
+          id="sessionsCount"
+          type="number"
+          min={0}
+          value={form.sessionsCount ?? 0}
+          onChange={(e) => update("sessionsCount", Number(e.target.value))}
+        />
+      </div>
+
+      <div className="field">
+        <label htmlFor="favoriteCourts">Sân ưa thích (tên sân, cách nhau bằng dấu phẩy)</label>
+        <input
+          id="favoriteCourts"
+          type="text"
+          maxLength={200}
+          value={form.favoriteCourts ?? ""}
+          onChange={(e) => update("favoriteCourts", e.target.value)}
+          placeholder="VD: Sân Viettel, Sân Kỳ Hòa"
+        />
+      </div>
+
+      <div className="field">
+        <label>Ngày hay chơi</label>
+        <ChipGroupMulti
+          options={DAYS_OPTIONS}
+          value={form.favoriteDays ?? []}
+          onChange={(v) => update("favoriteDays", v)}
         />
       </div>
 

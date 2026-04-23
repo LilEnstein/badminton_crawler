@@ -25,6 +25,9 @@ export interface UserProfileProps {
   budgetVnd: number;
   shuttleType: ShuttleType;
   genderPreference: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
   updatedAt: Date;
 }
 
@@ -48,7 +51,10 @@ export class UserProfile {
       displayName: props.displayName.trim(),
       city: props.city.trim(),
       districts: [...props.districts],
-      timeSlots: [...props.timeSlots]
+      timeSlots: [...props.timeSlots],
+      favoriteDays: props.favoriteDays ? [...props.favoriteDays] : [],
+      favoriteCourts: props.favoriteCourts?.trim() || "",
+      sessionsCount: props.sessionsCount ?? 0
     };
   }
 
@@ -98,6 +104,9 @@ export class UserProfile {
   get budgetVnd(): number { return this.props.budgetVnd; }
   get shuttleType(): ShuttleType { return this.props.shuttleType; }
   get genderPreference(): GenderPreference { return this.props.genderPreference; }
+  get sessionsCount(): number | undefined { return this.props.sessionsCount; }
+  get favoriteCourts(): string | undefined { return this.props.favoriteCourts; }
+  get favoriteDays(): readonly string[] | undefined { return this.props.favoriteDays; }
   get updatedAt(): Date { return this.props.updatedAt; }
 
   toPublic(): UserProfilePublic {
@@ -112,6 +121,9 @@ export class UserProfile {
       budgetVnd: this.props.budgetVnd,
       shuttleType: this.props.shuttleType,
       genderPreference: this.props.genderPreference,
+      sessionsCount: this.props.sessionsCount,
+      favoriteCourts: this.props.favoriteCourts,
+      favoriteDays: this.props.favoriteDays ? [...this.props.favoriteDays] : [],
       updatedAt: this.props.updatedAt.toISOString()
     };
   }
@@ -128,5 +140,8 @@ export interface UserProfilePublic {
   budgetVnd: number;
   shuttleType: ShuttleType;
   genderPreference: GenderPreference;
+  sessionsCount?: number;
+  favoriteCourts?: string;
+  favoriteDays?: string[];
   updatedAt: string;
 }

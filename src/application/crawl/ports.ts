@@ -29,6 +29,7 @@ export interface ScrapeDiagnostics {
   htmlLength: number;
   postIdsFound: number;
   hasLoginForm: boolean;
+  loginSelectorsMatched?: Array<{ selector: string; count: number; visible: number }>;
   isLoginWallUrl: boolean;
   navError: string | null;
   bodyPreview: string;

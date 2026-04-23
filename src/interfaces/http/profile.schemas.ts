@@ -5,6 +5,7 @@ import { GENDER_PREFERENCES, SHUTTLE_TYPES, TIME_SLOTS } from "@/domain/profile"
 const timeSlot = z.enum(TIME_SLOTS);
 const gender = z.enum(GENDER_PREFERENCES);
 const shuttle = z.enum(SHUTTLE_TYPES);
+const favoriteDay = z.enum(["CN", "T2", "T3", "T4", "T5", "T6", "T7"]);
 
 const tolerance = z.union([z.literal(1), z.literal(2)]);
 
@@ -27,7 +28,10 @@ export const createProfileSchema = z
     timeSlots: z.array(timeSlot).min(1),
     budgetVnd,
     shuttleType: shuttle,
-    genderPreference: gender
+    genderPreference: gender,
+    sessionsCount: z.number().int().min(0).optional(),
+    favoriteCourts: z.string().trim().max(200).optional(),
+    favoriteDays: z.array(favoriteDay).optional()
   })
   .strict();
 
@@ -41,7 +45,10 @@ export const updateProfileSchema = z
     timeSlots: z.array(timeSlot).min(1).optional(),
     budgetVnd: budgetVnd.optional(),
     shuttleType: shuttle.optional(),
-    genderPreference: gender.optional()
+    genderPreference: gender.optional(),
+    sessionsCount: z.number().int().min(0).optional(),
+    favoriteCourts: z.string().trim().max(200).optional(),
+    favoriteDays: z.array(favoriteDay).optional()
   })
   .strict()
   .refine((obj) => Object.keys(obj).length > 0, {

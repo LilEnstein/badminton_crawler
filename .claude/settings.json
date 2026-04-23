@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"const c=require\\('crypto'\\);console.log\\('ACCESS='+c.randomBytes\\(48\\).toString\\('hex'\\)\\);console.log\\('REFRESH='+c.randomBytes\\(48\\).toString\\('hex'\\)\\)\")"
+      "Bash(node -e \"const c=require\\('crypto'\\);console.log\\('ACCESS='+c.randomBytes\\(48\\).toString\\('hex'\\)\\);console.log\\('REFRESH='+c.randomBytes\\(48\\).toString\\('hex'\\)\\)\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/crawl-jobs -H \"X-Internal-Token: badminton-internal-dev-token\" -H \"Content-Type: application/json\" -d \"{\\\\\"groupIds\\\\\":[\\\\\"910458119501297\\\\\"]}\")",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/crawl-jobs/parse -H \"X-Internal-Token: badminton-internal-dev-token\" -H \"Content-Type: application/json\" -d \"{\\\\\"rawPostId\\\\\":\\\\\"01KPTT7T0GWZ6C5E0C8P32E72E\\\\\"}\")",
+      "Bash(curl -s \"https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyAaVOWUTVJ8Te9WcQEWxaMiq5f5cIPm-wQ\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/v1/crawl-jobs -H \"X-Internal-Token: badminton-internal-dev-token\" -H \"Content-Type: application/json\" -d \"{\\\\\"groupIds\\\\\":[\\\\\"152334461768622\\\\\"]}\")"
     ]
   }
 }
