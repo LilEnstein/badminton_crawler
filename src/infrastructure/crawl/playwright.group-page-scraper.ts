@@ -2,13 +2,20 @@ import type { RawPostCandidate, GroupPageScraper } from "@/application/crawl/por
 import { LoginWallError, DomChangedError } from "@/domain/crawl";
 
 const LOGIN_PATHS = ["/login", "/checkpoint", "/recover"];
-const GROUP_SETTLE_MS = 8_000;
-const POST_SETTLE_MS = 4_000;
-const NAV_TIMEOUT_MS = 60_000;
-const MIN_DELAY_MS = 2_000;
-const MAX_DELAY_MS = 6_000;
-const MAX_POSTS_PER_RUN = 10;
 const MIN_POST_TEXT_LENGTH = 50;
+
+// Vercel/Lambda: stay within 60 s; local: be thorough.
+const IS_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const GROUP_SETTLE_MS  = IS_SERVERLESS ? 3_000 : 8_000;
+const POST_SETTLE_MS   = IS_SERVERLESS ? 2_000 : 4_000;
+const NAV_TIMEOUT_MS   = IS_SERVERLESS ? 20_000 : 60_000;
+const MIN_DELAY_MS     = IS_SERVERLESS ? 500   : 2_000;
+const MAX_DELAY_MS     = IS_SERVERLESS ? 1_500  : 6_000;
+const MAX_POSTS_PER_RUN = IS_SERVERLESS ? 3 : 10;
+
+// chromium-min downloads this URL into /tmp on first cold start (~40 MB, cached across warm calls).
+const CHROMIUM_PACK_URL =
+  "https://github.com/Sparticuz/chromium/releases/download/v131.0.1/chromium-v131.0.1-pack.tar";
 
 function randomDelay(): Promise<void> {
   const ms = MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS);
@@ -32,13 +39,11 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
   private async launchBrowser(
     chromium: import("playwright-core").BrowserType
   ): Promise<import("playwright-core").Browser> {
-    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
-
-    if (isServerless) {
-      const sparticuz = await import("@sparticuz/chromium").then((m) => m.default ?? m);
+    if (IS_SERVERLESS) {
+      const sparticuz = await import("@sparticuz/chromium-min").then((m) => m.default ?? m);
       return chromium.launch({
         args: sparticuz.args,
-        executablePath: await sparticuz.executablePath(),
+        executablePath: await sparticuz.executablePath(CHROMIUM_PACK_URL),
         headless: Boolean(sparticuz.headless),
       });
     }
