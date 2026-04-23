@@ -152,9 +152,17 @@ export default function DashboardPage() {
         const totalNew = crawlResults.reduce((s, r) => s + r.newPosts, 0);
         const totalSkip = crawlResults.reduce((s, r) => s + r.skipped, 0);
         const parsed: number = json?.data?.parsed ?? 0;
-        const msg = totalNew === 0
-          ? `${totalSkip} bài đã có, không có bài mới.`
-          : `${totalNew} bài mới, ${parsed} lịch đã phân tích, ${totalSkip} bỏ qua.`;
+        const errors = crawlResults.filter((r) => r.error).map((r) => r.error!);
+        let msg: string;
+        if (crawlResults.length === 0) {
+          msg = "Chưa có nhóm nào được cấu hình.";
+        } else if (errors.length > 0 && totalNew === 0) {
+          msg = `Lỗi: ${errors[0]}`;
+        } else if (totalNew === 0) {
+          msg = `${totalSkip} bài đã có, không có bài mới.`;
+        } else {
+          msg = `${totalNew} bài mới, ${parsed} lịch đã phân tích, ${totalSkip} bỏ qua.`;
+        }
         setCrawlResult(msg);
         loadSessions();
       }

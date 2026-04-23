@@ -12,8 +12,12 @@ export interface Envelope<T> {
   error: ApiError | null;
 }
 
-export function ok<T>(data: T, init?: ResponseInit): NextResponse<Envelope<T>> {
-  return NextResponse.json<Envelope<T>>({ data, meta: null, error: null }, init);
+export function ok<T>(
+  data: T,
+  meta?: Record<string, unknown> | null,
+  init?: ResponseInit
+): NextResponse<Envelope<T>> {
+  return NextResponse.json<Envelope<T>>({ data, meta: meta ?? null, error: null }, init);
 }
 
 export function fail(

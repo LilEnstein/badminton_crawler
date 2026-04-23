@@ -1,5 +1,11 @@
 import { DomainError } from "@/domain/user/errors";
 
+export class InvalidFilterError extends DomainError {
+  constructor(detail: string) {
+    super("INVALID_FILTER", `Invalid filter: ${detail}`);
+  }
+}
+
 export class InvalidParserOutputError extends DomainError {
   constructor(detail: string) {
     super("INVALID_PARSER_OUTPUT", `Parser returned invalid output: ${detail}`);

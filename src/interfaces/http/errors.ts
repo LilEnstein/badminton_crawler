@@ -38,7 +38,8 @@ const STATUS_BY_CODE: Record<string, number> = {
   INVALID_BOT: 400,
   INVALID_PARSER_OUTPUT: 422,
   PROVIDER_UNAVAILABLE: 503,
-  SESSION_NOT_FOUND: 404
+  SESSION_NOT_FOUND: 404,
+  INVALID_FILTER: 400
 };
 
 export function zodErrorToResponse(err: ZodError): NextResponse<Envelope<null>> {

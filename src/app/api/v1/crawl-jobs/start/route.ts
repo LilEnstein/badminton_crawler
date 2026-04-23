@@ -7,6 +7,7 @@ import { authenticate } from "@/interfaces/http/bearer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   return handle(req, async () => {
@@ -14,7 +15,8 @@ export async function POST(req: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { crawlGroup, listGroups } = getCrawlContainer();
-    const groups = await listGroups.execute();
+    const dbGroups = await listGroups.execute();
+    const groups = dbGroups.length > 0 ? dbGroups : getEnvGroups();
 
     const crawlResults: Array<{ groupId: string; newPosts: number; skipped: number; error?: string }> = [];
 
@@ -56,4 +58,19 @@ export async function POST(req: NextRequest) {
 
     return ok({ crawlResults, parsed, parseFailed });
   });
+}
+
+// Fallback: parse group IDs from FACEBOOK_GROUP_URLS env var when no groups are in the DB.
+// Accepts full URLs (https://facebook.com/groups/123) or bare IDs (123).
+function getEnvGroups(): Array<{ fbGroupId: string }> {
+  const raw = process.env.FACEBOOK_GROUP_URLS ?? "";
+  return raw
+    .split(",")
+    .map((s) => {
+      const trimmed = s.trim();
+      const match = trimmed.match(/\/groups\/([^/?]+)/);
+      return match ? match[1] : trimmed;
+    })
+    .filter(Boolean)
+    .map((fbGroupId) => ({ fbGroupId }));
 }

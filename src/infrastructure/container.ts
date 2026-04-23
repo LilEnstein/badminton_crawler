@@ -2,19 +2,23 @@ import { LoginWithEmailUseCase } from "@/application/auth/login-with-email.use-c
 import { LogoutUseCase } from "@/application/auth/logout.use-case";
 import { RegisterUserUseCase } from "@/application/auth/register-user.use-case";
 import { RotateRefreshTokenUseCase } from "@/application/auth/rotate-refresh-token.use-case";
+import { AddBotUseCase } from "@/application/crawl/add-bot.use-case";
 import { AddGroupUseCase } from "@/application/crawl/add-group.use-case";
 import { CrawlGroupUseCase } from "@/application/crawl/crawl-group.use-case";
 import { ListGroupsUseCase } from "@/application/crawl/list-groups.use-case";
 import { RemoveGroupUseCase } from "@/application/crawl/remove-group.use-case";
 import { RotateBotUseCase } from "@/application/crawl/rotate-bot.use-case";
 import { UpdateGroupStatusUseCase } from "@/application/crawl/update-group-status.use-case";
+import { InlineMatchScoreCalculator } from "@/application/match/inline-match-score.calculator";
 import { ParsePostUseCase } from "@/application/parse/parse-post.use-case";
 import { CreateProfileUseCase } from "@/application/profile/create-profile.use-case";
 import { GetMyProfileUseCase } from "@/application/profile/get-my-profile.use-case";
 import { UpdateProfileUseCase } from "@/application/profile/update-profile.use-case";
+import { GetSessionDetailUseCase } from "@/application/session/get-session-detail.use-case";
+import { SearchSessionsUseCase } from "@/application/session/search-sessions.use-case";
 
 import { SeedDistrictCatalog } from "./catalogs/seed.district-catalog";
-import { AesGcmFacebookSessionProvider } from "./crawl/aes-gcm.facebook-session-provider";
+import { AesGcmFacebookSessionProvider, encryptCookie } from "./crawl/aes-gcm.facebook-session-provider";
 import { ConsoleCrawlAlerter } from "./crawl/console.crawl-alerter";
 import { JsonParseJobQueue } from "./crawl/json.parse-job-queue";
 import { PlaywrightGroupPageScraper } from "./crawl/playwright.group-page-scraper";
@@ -59,6 +63,11 @@ export interface GroupContainer {
   clock: SystemClock;
 }
 
+export interface BotContainer {
+  addBot: AddBotUseCase;
+  listBots: () => Promise<{ id: string; label: string; status: string; lastUsedAt: string | null }[]>;
+}
+
 export interface CrawlContainer {
   crawlGroup: CrawlGroupUseCase;
   rotateBot: RotateBotUseCase;
@@ -69,11 +78,18 @@ export interface ParseContainer {
   parsePost: ParsePostUseCase;
 }
 
+export interface SessionContainer {
+  search: SearchSessionsUseCase;
+  detail: GetSessionDetailUseCase;
+}
+
 let cached: AuthContainer | null = null;
 let cachedProfile: ProfileContainer | null = null;
 let cachedGroup: GroupContainer | null = null;
+let cachedBot: BotContainer | null = null;
 let cachedCrawl: CrawlContainer | null = null;
 let cachedParse: ParseContainer | null = null;
+let cachedSession: SessionContainer | null = null;
 let cachedStore: BadmintonStore | null = null;
 
 function readEnv(name: string, fallback?: string): string {
@@ -153,6 +169,34 @@ export function getGroupContainer(): GroupContainer {
   return cachedGroup;
 }
 
+export function getBotContainer(): BotContainer {
+  if (cachedBot) return cachedBot;
+
+  const store = getStore();
+  const botRepo = new JsonFacebookBotRepository(store);
+  const ids = new UlidIdGenerator();
+  const keyHex = readEnv("BOT_COOKIE_KEY");
+
+  const container: BotContainer = {
+    addBot: new AddBotUseCase({
+      botRepo,
+      ids,
+      encrypt: (plaintext) => encryptCookie(plaintext, keyHex)
+    }),
+    listBots: async () => {
+      const bots = await store.facebookBots();
+      return bots.map((b) => ({
+        id: b.id,
+        label: b.label,
+        status: b.status,
+        lastUsedAt: b.lastUsedAt ?? null
+      }));
+    }
+  };
+  cachedBot = container;
+  return container;
+}
+
 export function getCrawlContainer(): CrawlContainer {
   if (cachedCrawl) return cachedCrawl;
 
@@ -201,4 +245,20 @@ export function getParseContainer(): ParseContainer {
     parsePost: new ParsePostUseCase({ rawPostRepo, parser, sessionRepo, parseFailureRepo, ids, clock })
   };
   return cachedParse;
+}
+
+export function getSessionContainer(): SessionContainer {
+  if (cachedSession) return cachedSession;
+
+  const store = getStore();
+  const sessionRepo = new JsonSessionRepository(store);
+  const profileRepo = new JsonUserProfileRepository(store);
+  const rawPostRepo = new JsonRawPostRepository(store);
+  const scoreCalc = new InlineMatchScoreCalculator();
+
+  cachedSession = {
+    search: new SearchSessionsUseCase({ sessionRepo, profileRepo, scoreCalc }),
+    detail: new GetSessionDetailUseCase({ sessionRepo, profileRepo, rawPostFinder: rawPostRepo, scoreCalc })
+  };
+  return cachedSession;
 }

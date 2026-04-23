@@ -17,14 +17,11 @@ function randomDelay(): Promise<void> {
 
 export class PlaywrightGroupPageScraper implements GroupPageScraper {
   async scrape(groupId: string, cookie: string): Promise<RawPostCandidate[]> {
-    const { chromium } = await import("playwright").catch(() => {
-      throw new DomChangedError("playwright package not installed — run: npm install playwright");
+    const { chromium } = await import("playwright-core").catch(() => {
+      throw new DomChangedError("playwright-core package not installed — run: npm install playwright-core");
     });
 
-    // chromium-headless-shell crashes on some Windows installs (0xC0000142);
-    // msedge is always present on Windows and is the reliable fallback.
-    const channel = process.platform === "win32" ? "msedge" : undefined;
-    const browser = await chromium.launch({ headless: true, channel });
+    const browser = await this.launchBrowser(chromium);
     try {
       return await this.scrapeWithBrowser(browser, groupId, cookie);
     } finally {
@@ -32,8 +29,28 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
     }
   }
 
+  private async launchBrowser(
+    chromium: import("playwright-core").BrowserType
+  ): Promise<import("playwright-core").Browser> {
+    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
+    if (isServerless) {
+      const sparticuz = await import("@sparticuz/chromium").then((m) => m.default ?? m);
+      return chromium.launch({
+        args: sparticuz.args,
+        executablePath: await sparticuz.executablePath(),
+        headless: Boolean(sparticuz.headless),
+      });
+    }
+
+    // chromium-headless-shell crashes on some Windows installs (0xC0000142);
+    // msedge is always present on Windows and is the reliable fallback.
+    const channel = process.platform === "win32" ? "msedge" : undefined;
+    return chromium.launch({ headless: true, channel });
+  }
+
   private async scrapeWithBrowser(
-    browser: import("playwright").Browser,
+    browser: import("playwright-core").Browser,
     groupId: string,
     cookie: string
   ): Promise<RawPostCandidate[]> {
@@ -89,7 +106,7 @@ export class PlaywrightGroupPageScraper implements GroupPageScraper {
 }
 
 async function scrapePostPage(
-  page: import("playwright").Page,
+  page: import("playwright-core").Page,
   groupId: string,
   fbPostId: string
 ): Promise<RawPostCandidate | null> {
@@ -131,7 +148,7 @@ function extractPostTextFromHtml(html: string): string | null {
 }
 
 // Fallback: collect the longest unique [dir="auto"] text blocks that look like post content
-async function extractPostTextFromDom(page: import("playwright").Page): Promise<string | null> {
+async function extractPostTextFromDom(page: import("playwright-core").Page): Promise<string | null> {
   const elements = await page.locator('[dir="auto"]').all();
   const seen = new Set<string>();
   let longest = "";
@@ -171,7 +188,7 @@ function extractPostIdsFromHtml(html: string): string[] {
 }
 
 async function extractAuthorInfo(
-  page: import("playwright").Page
+  page: import("playwright-core").Page
 ): Promise<{ name: string; profileUrl: string | null }> {
   for (const sel of ["[role=\"article\"] h2 a", "[role=\"article\"] strong a", "[role=\"article\"] h3 a"]) {
     const el = page.locator(sel).first();
@@ -185,7 +202,7 @@ async function extractAuthorInfo(
   return { name: "Unknown", profileUrl: null };
 }
 
-async function extractPostedAt(page: import("playwright").Page, fbPostId: string): Promise<Date> {
+async function extractPostedAt(page: import("playwright-core").Page, fbPostId: string): Promise<Date> {
   const timeLink = page.locator(`a[href*="/posts/${fbPostId}"]`).first();
   const label = await timeLink.getAttribute("aria-label").catch(() => null);
   if (label) {
@@ -199,7 +216,7 @@ function isLoginWall(url: string): boolean {
   return LOGIN_PATHS.some((p) => url.includes(p));
 }
 
-async function hasLoginForm(page: import("playwright").Page): Promise<boolean> {
+async function hasLoginForm(page: import("playwright-core").Page): Promise<boolean> {
   return page
     .locator('input[name="email"], input[name="pass"], form[action*="/login"]')
     .count()

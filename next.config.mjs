@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    serverComponentsExternalPackages: ["bcryptjs"]
+    serverComponentsExternalPackages: ["bcryptjs", "@sparticuz/chromium", "playwright-core"]
   }
 };
 
